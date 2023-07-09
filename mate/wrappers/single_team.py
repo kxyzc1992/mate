@@ -151,7 +151,7 @@ class SingleTeamHelper(gym.Wrapper, metaclass=WrapperMeta):
             Tuple[np.ndarray, np.ndarray],
             Tuple[List[float], List[float]],
             Tuple[List[bool], List[bool]],
-            Tuple[List[dict], List[dict]],
+            Tuple[List[dict], List[dict]], 
         ],
     ]:
         return self.swap(*self.env.step(self.swap(*action)))
@@ -168,7 +168,6 @@ class SingleTeamHelper(gym.Wrapper, metaclass=WrapperMeta):
         return tuple(
             (item[1], item[0]) if isinstance(item, (tuple, list)) else item for item in items
         )
-
 
 class SingleTeamMultiAgent(SingleTeamHelper):
     """Wrap the environment into a single-team multi-agent environment that
@@ -278,6 +277,132 @@ class SingleTeamMultiAgent(SingleTeamHelper):
             self.__class__.__name__, self.opponent_agent.__class__, self.env
         )
 
+class SingleTeamMultiAgentHyTgt(SingleTeamHelper):
+    """Wrap the environment into a single-team multi-agent environment that
+    users can use the Gym API to train and/or evaluate their agents.
+    """
+
+    # def __init__(self, env: BaseEnvironmentType, team: Team, opponent_agent: AgentType) -> None:
+    #     super().__init__(env, team=team)
+
+    #     self.action_space = env.action_space.spaces[team.value]
+    #     self.observation_space = env.observation_space.spaces[team.value]
+
+    #     self.opponent_agent = opponent_agent
+    #     self.opponent_agents_ordered = opponent_agent.spawn(self.num_opponents)
+    #     self.opponent_agents = list(self.opponent_agents_ordered)
+    #     self.opponent_joint_observation = None
+    #     self.opponent_infos = None
+    
+    def __init__(self, env: BaseEnvironmentType, team: Team, opponent_agent_candidates: list) -> None:
+        """
+        Accept multiple categories of opponent agent, randomly generate a mixture list of agents from the candidate pool.
+        """
+        
+        super().__init__(env, team=team)
+
+        self.action_space = env.action_space.spaces[team.value]
+        self.observation_space = env.observation_space.spaces[team.value]
+
+        self.opponent_agent_candidates = opponent_agent_candidates
+        self.opponent_agents_ordered = []
+        for candidate, num_opponents in self.opponent_agent_candidates, self.num_opponents_each_candidate:
+            self.opponent_agents_ordered.append(list(candidate.spawn(num_opponents))) # number should sum to the total target number
+        self.opponent_agents = list(self.opponent_agents_ordered)
+        self.opponent_joint_observation = None
+        self.opponent_infos = None
+
+    def load_config(self, config: Optional[Union[Dict[str, Any], str]] = None) -> None:
+        """Reinitialize the Multi-Agent Tracking Environment from a dictionary mapping or a JSON/YAML file."""
+
+        self.env.load_config(config=config)
+
+        SingleTeamMultiAgent.__init__(
+            self, self.env, team=self.team, opponent_agent=self.opponent_agent
+        )
+
+    def reset(self, **kwargs) -> np.ndarray:
+        joint_observation, self.opponent_joint_observation = super().reset(**kwargs)
+
+        self.opponent_agents = list(self.opponent_agents_ordered)
+        if self.shuffle_entities:
+            self.np_random.shuffle(self.opponent_agents)
+
+        group_reset(self.opponent_agents, self.opponent_joint_observation)
+        self.opponent_infos = None
+
+        return joint_observation
+
+    def send_messages(self, messages: Union[Message, Iterable[Message]]) -> None:
+        """Buffer the messages from an agent to others in the same team.
+
+        The environment will send the messages to recipients' through method
+        receive_messages(), and also info field of step() results.
+        """
+
+        if isinstance(messages, Message):
+            messages = (messages,)
+
+        messages = list(messages)
+        assert all(m.team is self.team for m in messages), (
+            f'All messages must be from the {self.team.name.lower()} team. '
+            f'Got messages = {messages}.'
+        )
+
+        self.env.send_messages(messages)
+
+    def receive_messages(
+        self, agent_id: Optional[Tuple[Team, int]] = None, agent: Optional['AgentType'] = None
+    ) -> Union[List[List[Message]], List[Message]]:
+        """Retrieve the messages to recipients. If no agent is specified, this
+        method will return all the messages to all agents in the environment.
+
+        The environment will also put the messages to recipients' info field of
+        step() results.
+        """
+
+        if agent_id is None and agent is None:
+            return [list(self.teammate_message_buffer[i]) for i in range(self.num_teammates)]
+
+        return self.env.receive_messages(agent_id=agent_id, agent=agent)
+
+    def step(
+        self, action: np.ndarray
+    ) -> Union[
+        Tuple[np.ndarray, float, bool, List[dict]],
+        Tuple[np.ndarray, List[float], List[bool], List[dict]],
+    ]:
+        opponent_joint_action = group_step(
+            self.env, self.opponent_agents, self.opponent_joint_observation, self.opponent_infos
+        )
+
+        (
+            (joint_observation, self.opponent_joint_observation),
+            (reward, _),
+            done,
+            (infos, self.opponent_infos),
+        ) = super().step((np.asarray(action), np.asarray(opponent_joint_action)))
+
+        if self.repeated_reward_individual_done:
+            done = done[0]
+
+        return joint_observation, reward, done, infos
+
+    def seed(self, seed: Optional[int] = None) -> List[int]:
+        seeds = self.env.seed(seed)
+
+        int_max = np.iinfo(int).max
+        for agent in itertools.chain([self.opponent_agent], self.opponent_agents_ordered):
+            seeds.append(agent.seed(self.np_random.randint(int_max))[0])
+
+        return seeds
+
+    def __str__(self) -> str:
+        # pylint: disable-next=consider-using-f-string
+        return '<{0}(opponent={1.__module__}.{1.__name__}){2}>'.format(
+            self.__class__.__name__, self.opponent_agent.__class__, self.env
+        )
+
 
 class MultiCamera(SingleTeamMultiAgent):
     """Wrap the environment into a single-team multi-agent environment that
@@ -292,6 +417,19 @@ class MultiCamera(SingleTeamMultiAgent):
 
         super().__init__(env, team=Team.CAMERA, opponent_agent=target_agent)
 
+
+class MultiCameraHyTgt(SingleTeamMultiAgentHyTgt):
+    """Wrap the environment into a single-team multi-agent environment that
+    users can use the Gym API to train and/or evaluate their camera agents.
+    """
+
+    def __init__(self, env: BaseEnvironmentType, target_agent_candidates: TargetAgentBases) -> None:
+        assert isinstance(target_agent_candidates, TargetAgentBases), (
+            f'You should provide an instance of target agent. '
+            f'Got target_agent = {target_agent_candidates!r}.'
+        )
+
+        super().__init__(env, team=Team.CAMERA, opponent_agent_candidates=target_agent_candidates)
 
 class MultiTarget(SingleTeamMultiAgent):
     """Wraps the environment into a single-team multi-agent environment that
