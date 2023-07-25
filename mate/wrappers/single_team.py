@@ -306,8 +306,12 @@ class SingleTeamMultiAgentHyTgt(SingleTeamHelper):
 
         self.opponent_agent_candidates = opponent_agent_candidates
         self.opponent_agents_ordered = []
-        for candidate, num_opponents in self.opponent_agent_candidates, self.num_opponents_each_candidate:
-            self.opponent_agents_ordered.append(list(candidate.spawn(num_opponents))) # number should sum to the total target number
+        
+        # all type of agents sum to self.num_opponents
+        num_opponents_per_candidate = self.num_opponents / len(self.opponent_agent_candidates)
+        for candidate in self.opponent_agent_candidates:
+            self.opponent_agents_ordered.append(list(candidate.spawn(num_opponents_per_candidate)))
+        
         self.opponent_agents = list(self.opponent_agents_ordered)
         self.opponent_joint_observation = None
         self.opponent_infos = None
@@ -317,8 +321,11 @@ class SingleTeamMultiAgentHyTgt(SingleTeamHelper):
 
         self.env.load_config(config=config)
 
-        SingleTeamMultiAgent.__init__(
-            self, self.env, team=self.team, opponent_agent=self.opponent_agent
+        # SingleTeamMultiAgent.__init__(
+        #     self, self.env, team=self.team, opponent_agent=self.opponent_agent
+        # )
+        SingleTeamMultiAgentHyTgt.__init__(
+            self, self.env, team=self.team, opponent_agent_candidates=self.opponent_agent_candidates
         )
 
     def reset(self, **kwargs) -> np.ndarray:
@@ -392,16 +399,21 @@ class SingleTeamMultiAgentHyTgt(SingleTeamHelper):
         seeds = self.env.seed(seed)
 
         int_max = np.iinfo(int).max
-        for agent in itertools.chain([self.opponent_agent], self.opponent_agents_ordered):
+        for agent in itertools.chain(self.opponent_agent_candidates, self.opponent_agents_ordered):
             seeds.append(agent.seed(self.np_random.randint(int_max))[0])
 
         return seeds
 
     def __str__(self) -> str:
         # pylint: disable-next=consider-using-f-string
-        return '<{0}(opponent={1.__module__}.{1.__name__}){2}>'.format(
-            self.__class__.__name__, self.opponent_agent.__class__, self.env
-        )
+        # return '<{0}(opponent={1.__module__}.{1.__name__}){2}>'.format(
+        #     self.__class__.__name__, self.opponent_agent.__class__, self.env
+        # )
+        ret_str = '<{0}(opponent='.format(self.__class__.__name__)
+        for opponent_agent in self.opponent_agent_candidates:
+            ret_str += '{0.__module__}.{0.__name__})'.format(opponent_agent.__class__)
+        ret_str += '{0}>'.format(self.env)
+        return ret_str
 
 
 class MultiCamera(SingleTeamMultiAgent):
@@ -423,8 +435,8 @@ class MultiCameraHyTgt(SingleTeamMultiAgentHyTgt):
     users can use the Gym API to train and/or evaluate their camera agents.
     """
 
-    def __init__(self, env: BaseEnvironmentType, target_agent_candidates: TargetAgentBases) -> None:
-        assert isinstance(target_agent_candidates, TargetAgentBases), (
+    def __init__(self, env: BaseEnvironmentType, target_agent_candidates: List[TargetAgentBase]) -> None:
+        assert isinstance(target_agent_candidates, List[TargetAgentBase]), (
             f'You should provide an instance of target agent. '
             f'Got target_agent = {target_agent_candidates!r}.'
         )
