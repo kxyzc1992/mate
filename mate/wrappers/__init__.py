@@ -18,6 +18,7 @@ from mate.wrappers.restricted_communication_range import RestrictedCommunication
 from mate.wrappers.shared_field_of_view import SharedFieldOfView
 from mate.wrappers.single_team import (
     MultiCamera,
+    MultiCameraHytgt,
     MultiTarget,
     SingleCamera,
     SingleTarget,
@@ -50,6 +51,7 @@ __all__ = [
     'group_communicate',
     'group_act',
     'MultiCamera',
+    'MultiCameraHytgt',
     'SingleCamera',
     'MultiTarget',
     'SingleTarget',

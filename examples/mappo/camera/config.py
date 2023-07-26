@@ -20,9 +20,9 @@ from examples.mappo.target.train import experiment
 def target_agent_factory():
     return mate.agents.GreedyTargetAgent(seed=0)
 
-def target_agent_loaded():
-    CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
-    return MAPPOTargetAgent(checkpoint_path=CHECKPOINT_PATH)
+# def target_agent_loaded():
+#     CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
+#     return MAPPOTargetAgent(checkpoint_path=CHECKPOINT_PATH)
 
 
 def make_env(env_config):
@@ -38,8 +38,8 @@ def make_env(env_config):
     if discrete_levels is not None:
         base_env = mate.DiscreteCamera(base_env, levels=discrete_levels)
 
-    # target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
-    target_agent = env_config.get('opponent_agent_factory', target_agent_loaded)()
+    target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
+    # target_agent = env_config.get('opponent_agent_factory', target_agent_loaded)()
     env = mate.MultiCamera(base_env, target_agent=target_agent)
 
     env = mate.RelativeCoordinates(env)
@@ -78,8 +78,8 @@ config = {
         'discrete_levels': 5,
         'frame_skip': 5,
         'enhanced_observation': 'none',
-        # 'opponent_agent_factory': target_agent_factory,
-        'opponent_agent_factory': target_agent_loaded,
+        'opponent_agent_factory': target_agent_factory,
+        # 'opponent_agent_factory': target_agent_loaded,
     },
     'horizon': 500,
     'callbacks': CustomMetricCallback,

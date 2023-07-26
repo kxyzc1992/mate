@@ -3,7 +3,7 @@ from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.policy import PolicySpec
 
 import mate
-from examples.mappo.models import MAPPOModel
+from examples.mappo_hytgt.models import MAPPOModel
 from examples.utils import (
     SHARED_POLICY_ID,
     CustomMetricCallback,
@@ -54,13 +54,13 @@ def make_env(env_config):
     return env
 
 
-tune.register_env('mate-mappo.target', make_env)
+tune.register_env('mate-mappo_hytgt.target', make_env)
 
 config = {
     'framework': 'torch',
     'seed': 0,
     # === Environment ==============================================================================
-    'env': 'mate-mappo.target',
+    'env': 'mate-mappo_hytgt.target',
     'env_config': {
         'env_id': 'MultiAgentTracking-v0',
         'config': 'MATE-2v4-0.yaml',

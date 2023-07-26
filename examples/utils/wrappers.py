@@ -50,16 +50,16 @@ class RLlibMultiAgentAPI(gym.Wrapper, RLlibHomogeneousMultiAgentEnv, metaclass=m
             f'Please wrap the environment with wrapper `RepeatedRewardIndividualDone` first. '
             f'Got env = {env}.'
         )
-        assert isinstance(env, (mate.MultiCamera, mate.MultiTarget)), (
+        assert isinstance(env, (mate.MultiCamera, mate.MultiCameraHytgt, mate.MultiTarget)), (
             f'You should provide a single-team multi-agent environment '
-            f'(i.e. `mate.MultiCamera` or `mate.MultiTarget`). '
+            f'(i.e. `mate.MultiCamera`, `mate.MultiCameraHytgt` or `mate.MultiTarget`). '
             f'Got env = {env}.'
         )
 
         super().__init__(env)
 
         self.id_format = (
-            'camera_{}'.format if isinstance(env, mate.MultiCamera) else 'target_{}'.format
+            'camera_{}'.format if isinstance(env, (mate.MultiCamera, mate.MultiCameraHytgt)) else 'target_{}'.format
         )
 
         self.observation_space = env.observation_space[0]
@@ -99,9 +99,9 @@ class RLlibMultiAgentCentralizedTraining(
             f'Please wrap the environment with wrapper `RLlibMultiAgentAPI` first. '
             f'Got env = {env}.'
         )
-        assert isinstance(env, (mate.MultiCamera, mate.MultiTarget)), (
+        assert isinstance(env, (mate.MultiCamera, mate.MultiCameraHytgt, mate.MultiTarget)), (
             f'You should provide a single-team multi-agent environment '
-            f'(i.e. `mate.MultiCamera` or `mate.MultiTarget`). '
+            f'(i.e. `mate.MultiCamera`, `mate.MultiCameraHytgt` or `mate.MultiTarget`). '
             f'Got env = {env}.'
         )
 
@@ -267,9 +267,9 @@ class FrameSkip(gym.Wrapper, metaclass=mate.WrapperMeta):
     def __init__(self, env, frame_skip=1):
         from examples.hrl.wrappers import HierarchicalCamera
 
-        assert isinstance(env, (mate.MultiCamera, mate.MultiTarget)), (
+        assert isinstance(env, (mate.MultiCamera, mate.MultiCameraHytgt, mate.MultiTarget)), (
             f'You should provide a single-team multi-agent environment '
-            f'(i.e. `mate.MultiCamera` or `mate.MultiTarget`). '
+            f'(i.e. `mate.MultiCamera`, `mate.MultiCameraHytgt` or `mate.MultiTarget`). '
             f'Got env = {env}.'
         )
         assert not isinstance(env, HierarchicalCamera), (

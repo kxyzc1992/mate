@@ -3,7 +3,7 @@ from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.policy import PolicySpec
 
 import mate
-from examples.mappo.models import MAPPOModel
+from examples.mappo_hytgt.models import MAPPOModel
 from examples.utils import (
     SHARED_POLICY_ID,
     CustomMetricCallback,
@@ -13,9 +13,9 @@ from examples.utils import (
     shared_policy_mapping_fn,
 )
 
-import os
-from examples.mappo.target.agent import MAPPOTargetAgent
-from examples.mappo.target.train import experiment
+# import os
+# from examples.mappo_hytgt.target.agent import MAPPOTargetAgent
+# from examples.mappo_hytgt.target.train import experiment
 
 # def target_agent_factory():
 def target_agent_greedy():
@@ -24,9 +24,9 @@ def target_agent_greedy():
 def target_agent_random():
     return mate.agents.RandomTargetAgent(seed=0)
 
-def target_agent_loaded():
-    CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
-    return MAPPOTargetAgent(checkpoint_path=CHECKPOINT_PATH)
+# def target_agent_loaded():
+#     CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
+#     return MAPPOTargetAgent(checkpoint_path=CHECKPOINT_PATH)
 
 
 def make_env(env_config):
@@ -45,9 +45,9 @@ def make_env(env_config):
     # target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
     # target_agent_learned = env_config.get('opponent_agent_factory', target_agent_loaded)()
     target_agent_candidates = []
-    target_agent_candidates.append(target_agent_random)
+    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_random)())
     # target_agent_candidates.append(target_agent_goal_0)
-    target_agent_candidates.append(target_agent_greedy)
+    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_greedy)())
     env = mate.MultiCameraHytgt(base_env, target_agent_candidates=target_agent_candidates)
 
     env = mate.RelativeCoordinates(env)
@@ -70,13 +70,13 @@ def make_env(env_config):
     return env
 
 
-tune.register_env('mate-mappo.camera', make_env)
+tune.register_env('mate-mappo_hytgt.camera', make_env)
 
 config = {
     'framework': 'torch',
     'seed': 0,
     # === Environment ==============================================================================
-    'env': 'mate-mappo.camera',
+    'env': 'mate-mappo_hytgt.camera',
     'env_config': {
         'env_id': 'MultiAgentTracking-v0',
         'config': 'MATE-4v8-9.yaml',
@@ -87,7 +87,7 @@ config = {
         'frame_skip': 5,
         'enhanced_observation': 'none',
         # 'opponent_agent_factory': target_agent_factory,
-        'opponent_agent_factory': target_agent_loaded,
+        # 'opponent_agent_factory': target_agent_loaded,
     },
     'horizon': 500,
     'callbacks': CustomMetricCallback,

@@ -5,7 +5,7 @@ Example of MAPPO agents for the Multi-Agent Tracking Environment.
 
 .. code:: bash
 
-    python3 -m examples.mappo.camera
+    python3 -m examples.mappo_hytgt.camera
 
     python3 -m mate.evaluate --episodes 1 --render-communication \
         --camera-agent examples.mappo:MAPPOCameraAgent \
@@ -17,8 +17,8 @@ import os
 import sys
 
 import mate
-from examples.mappo.camera.agent import MAPPOCameraAgent
-from examples.mappo.camera.train import experiment
+from examples.mappo_hytgt.camera.agent import MAPPOCameraAgent
+from examples.mappo_hytgt.camera.train import experiment
 
 
 CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
@@ -53,7 +53,7 @@ def main():
         print(
             (
                 f'Model checkpoint ("{args.checkpoint_path}") does not exist. Please run the following command to train a model first:\n'
-                f'  python -m examples.mappo.camera.train'
+                f'  python -m examples.mappo_hytgt.camera.train'
             ),
             file=sys.stderr,
         )

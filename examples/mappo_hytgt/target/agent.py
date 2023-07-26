@@ -3,8 +3,8 @@ import copy
 from ray.rllib.agents.ppo import PPOTorchPolicy
 
 import mate
-from examples.mappo.target.config import config as _config
-from examples.mappo.target.config import make_env as _make_env
+from examples.mappo_hytgt.target.config import config as _config
+from examples.mappo_hytgt.target.config import make_env as _make_env
 from examples.utils import RLlibPolicyMixIn
 
 
