@@ -8,6 +8,7 @@ import numpy as np
 
 from mate.agents.base import CameraAgentBase, TargetAgentBase
 from mate.utils import Message, Team
+from mate.agents import ArbitraryTargetAgent
 
 # pylint: disable-next=cyclic-import
 from mate.wrappers.typing import (
@@ -204,9 +205,7 @@ class SingleTeamMultiAgent(SingleTeamHelper):
         joint_observation, self.opponent_joint_observation = super().reset(**kwargs)
 
         self.opponent_agents = list(self.opponent_agents_ordered)
-        if self.shuffle_entities:
-            self.np_random.shuffle(self.opponent_agents)
-
+        
         group_reset(self.opponent_agents, self.opponent_joint_observation)
         self.opponent_infos = None
 
@@ -312,14 +311,37 @@ class SingleTeamMultiAgentHytgt(SingleTeamHelper):
         self.opponent_agent_candidates = opponent_agent_candidates
         self.opponent_agents_ordered = []
         
-        # all type of agents should sum to self.num_opponents.
-        # temporarily require self.num_opponents can be evenly distributed to each candidate, like 8/2=4 instances per candidate, etc.
-        num_opponents_per_candidate = np.int64(np.floor(self.num_opponents / len(self.opponent_agent_candidates)))
-        for candidate in self.opponent_agent_candidates:
-            # self.opponent_agents_ordered.append(list(candidate.spawn(num_opponents_per_candidate)))
-            self.opponent_agents_ordered.append(candidate.spawn(num_opponents_per_candidate))
+        assert (len(env.intentional_bits) == env.num_targets)
+        target_agents = []
+        arbitrary_candidates = list(self.opponent_agent_candidates[0].spawn(np.int64(env.num_intentional)))
+        random_candidates = list(self.opponent_agent_candidates[1].spawn(np.int64(env.num_targets-env.num_intentional)))
+        count_intentional = 0
+        count_unintentional = 0
+        for i in range(env.num_targets):
+            if env.intentional_bits[i]:
+                target_agents.append(arbitrary_candidates[count_intentional])
+                if count_intentional >= len(arbitrary_candidates):
+                    print("bug is here")
+                count_intentional += 1
+            else:
+                if count_unintentional >= len(random_candidates):
+                    print("bug is here")
+                target_agents.append(random_candidates[count_unintentional])
+                count_unintentional += 1
+        assert (count_intentional == env.num_intentional)
+        assert (count_intentional + count_unintentional == env.num_targets)
         
-        self.opponent_agents = flatten(list(self.opponent_agents_ordered))
+        self.opponent_agents_ordered = target_agents
+        
+        # # all type of agents should sum to self.num_opponents.
+        # # temporarily require self.num_opponents can be evenly distributed to each candidate, like 8/2=4 instances per candidate, etc.
+        # num_opponents_per_candidate = np.int64(np.floor(self.num_opponents / len(self.opponent_agent_candidates)))
+        # for candidate in self.opponent_agent_candidates:
+        #     # self.opponent_agents_ordered.append(list(candidate.spawn(num_opponents_per_candidate)))
+        #     self.opponent_agents_ordered.append(candidate.spawn(num_opponents_per_candidate))
+        
+        # self.opponent_agents = flatten(list(self.opponent_agents_ordered))
+        self.opponent_agents = self.opponent_agents_ordered
         self.opponent_joint_observation = None
         self.opponent_infos = None
 
@@ -338,9 +360,15 @@ class SingleTeamMultiAgentHytgt(SingleTeamHelper):
     def reset(self, **kwargs) -> np.ndarray:
         joint_observation, self.opponent_joint_observation = super().reset(**kwargs)
 
-        self.opponent_agents = flatten(list(self.opponent_agents_ordered))
+        self.opponent_agents = self.opponent_agents_ordered
         if self.shuffle_entities:
             self.np_random.shuffle(self.opponent_agents)
+            for i in range(self.num_opponents):
+                if isinstance(self.opponent_agents[i], ArbitraryTargetAgent):
+                    self.env.intentional_bits[i] = True
+                else:
+                    self.env.intentional_bits[i] = False
+
 
         group_reset(self.opponent_agents, self.opponent_joint_observation)
         self.opponent_infos = None

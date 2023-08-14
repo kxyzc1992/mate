@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 
 r"""
-Example of MAPPO agents for the Multi-Agent Tracking Environment.
+Example of TargetIntent MAPPO agents for the Multi-Agent Tracking Environment.
 
 .. code:: bash
 
-    python3 -m examples.mappo_hytgt.camera
+    python3 -m examples.its.mappo.camera
 
     python3 -m mate.evaluate --episodes 1 --render-communication \
-        --camera-agent examples.mappo:MAPPOCameraAgent \
-        --camera-kwargs '{ "checkpoint_path": "examples/mappo/camera/ray_results/MAPPO/latest-checkpoint" }'
+        --camera-agent examples.its:ITSMAPPOCameraAgent \
+        --camera-kwargs '{ "checkpoint_path": "examples/its/mappo/camera/ray_results/ITS-MAPPO/latest-checkpoint" }'
 """
 
 import argparse
+import functools
 import os
 import sys
 
 import mate
-from examples.mappo_hytgt.camera.agent import MAPPOCameraAgent
-from examples.mappo_hytgt.camera.train import experiment
+from examples.its.mappo.camera.agent import ITSMAPPOCameraAgent
+from examples.its.mappo.camera.train import experiment
+from examples.its.wrappers import TgtIntentCamera
 
 
 CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
@@ -53,17 +55,15 @@ def main():
         print(
             (
                 f'Model checkpoint ("{args.checkpoint_path}") does not exist. Please run the following command to train a model first:\n'
-                f'  python -m examples.mappo_hytgt.camera.train'
+                f'  python -m examples.its.mappo.camera.train'
             ),
             file=sys.stderr,
         )
         sys.exit(1)
 
     # Make agents ##############################################################
-    camera_agent = MAPPOCameraAgent(checkpoint_path=args.checkpoint_path)
-    target_agent_candidates = []
-    target_agent_candidates.append(mate.ArbitraryTargetAgent())
-    target_agent_candidates.append(mate.RandomTargetAgent())
+    camera_agent = ITSMAPPOCameraAgent(checkpoint_path=args.checkpoint_path)
+    target_agent = mate.GreedyTargetAgent()
 
     # Make the environment #####################################################
     env_config = camera_agent.config.get('env_config', {})
@@ -77,7 +77,7 @@ def main():
     base_env = mate.RenderCommunication(base_env)
     if enhanced_observation_team is not None:
         base_env = mate.EnhancedObservation(base_env, team=enhanced_observation_team)
-    env = mate.MultiCameraHytgt(base_env, target_agent_candidates=target_agent_candidates)
+    env = mate.MultiCamera(base_env, target_agent=target_agent)
     print(env)
 
     # Rollout ##################################################################
@@ -94,10 +94,17 @@ def main():
             env, camera_agents, camera_joint_observation, camera_infos
         )
 
+        selections = [
+            (agent.index, agent.last_selection, agent.last_mask) for agent in camera_agents
+        ]
+
         results = env.step(camera_joint_action)
         camera_joint_observation, camera_team_reward, done, camera_infos = results
 
-        env.render()
+        render_callback = functools.partial(
+            TgtIntentCamera.render_selection_callback, selections=selections
+        )
+        env.render(onetime_callbacks=[render_callback])
         if done:
             break
 

@@ -479,6 +479,12 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
         self.target_camera_view_mask = np.zeros(
             (self.num_targets, self.num_cameras), dtype=np.bool8
         )
+        
+        # Initialize intentional targets assignment randomly
+        self.num_intentional = self.config['num_intentional_targets']
+        self.intentional_bits = np.zeros(self.num_targets, dtype=np.bool8)
+        intentional_indices = np.random.choice([i for i in range(self.num_targets)], size=self.num_intentional, replace=False)        
+        self.intentional_bits[intentional_indices] = True
 
         self.camera_obstacle_view_mask = np.zeros(
             (self.num_cameras, self.num_obstacles), dtype=np.bool8
@@ -530,6 +536,7 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
 
         self.coverage_rate = 0.0
         self.real_coverage_rate = 0.0
+        self.intentional_coverage_rate = 0.0
         self.mean_transport_rate = 0.0
 
         self.episode_step = 0
@@ -830,6 +837,12 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
         self.target_message_queue.clear()
 
         self.episode_step = 0
+        
+        # # Re-sample intentional targets assignment randomly
+        # self.num_intentional = self.config['num_intentional_targets']
+        # self.intentional_bits = np.zeros(self.num_targets, dtype=np.bool8)
+        # intentional_indices = np.random.choice([i for i in range(self.num_targets)], size=self.num_intentional)        
+        # self.intentional_bits[intentional_indices] = True
 
         return self.joint_observation()
 
@@ -970,6 +983,9 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
             self.real_coverage_rate = (self.tracked_bits * with_bounty_bits).sum() / num_with_bounty
         else:
             self.real_coverage_rate = 0.0
+        # Add an extra metric to measure the tracking of intentional targets
+        num_intentional = self.intentional_bits.sum()
+        self.intentional_coverage_rate = (self.tracked_bits * self.intentional_bits).sum() / num_intentional
 
         if self.num_delivered_cargoes > 0:
             self.mean_transport_rate = self.delayed_target_team_episode_reward / (

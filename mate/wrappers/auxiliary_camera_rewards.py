@@ -38,6 +38,7 @@ class AuxiliaryCameraRewards(gym.Wrapper, metaclass=WrapperMeta):
         'raw_reward',           # team reward
         'coverage_rate',        # team reward
         'real_coverage_rate',   # team reward
+        'intentional_coverage_rate', # team reward
         'mean_transport_rate',  # team reward
         'soft_coverage_score',  # individual reward
         'num_tracked',          # individual reward
@@ -142,6 +143,7 @@ class AuxiliaryCameraRewards(gym.Wrapper, metaclass=WrapperMeta):
                 'raw_reward': raw_reward,
                 'coverage_rate': self.coverage_rate,
                 'real_coverage_rate': self.real_coverage_rate,
+                'intentional_coverage_rate': self.intentional_coverage_rate,
                 'mean_transport_rate': self.mean_transport_rate,
                 'soft_coverage_score': soft_coverage_scores[c],
                 'num_tracked': self.camera_target_view_mask[c, ...].sum(),

@@ -3,33 +3,19 @@ from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.policy import PolicySpec
 
 import mate
-from examples.mappo_hytgt.models import MAPPOModel
+from examples.its.wrappers import TgtIntentCamera
+from examples.mappo.models import MAPPOModel
 from examples.utils import (
     SHARED_POLICY_ID,
     CustomMetricCallback,
-    FrameSkip,
     RLlibMultiAgentAPI,
     RLlibMultiAgentCentralizedTraining,
     shared_policy_mapping_fn,
 )
 
-# import os
-# from examples.mappo_hytgt.target.agent import MAPPOTargetAgent
-# from examples.mappo_hytgt.target.train import experiment
 
-# def target_agent_factory():
-def target_agent_greedy():
+def target_agent_factory():
     return mate.agents.GreedyTargetAgent(seed=0)
-
-def target_agent_arbitrary():
-    return mate.agents.ArbitraryTargetAgent(seed=0)
-
-def target_agent_random():
-    return mate.agents.RandomTargetAgent(seed=0)
-
-# def target_agent_loaded():
-#     CHECKPOINT_PATH = os.path.join(experiment.checkpoint_dir, 'latest-checkpoint')
-#     return MAPPOTargetAgent(checkpoint_path=CHECKPOINT_PATH)
 
 
 def make_env(env_config):
@@ -41,16 +27,8 @@ def make_env(env_config):
     if str(env_config.get('enhanced_observation', None)).lower() != 'none':
         base_env = mate.EnhancedObservation(base_env, team=env_config['enhanced_observation'])
 
-    discrete_levels = env_config.get('discrete_levels', None)
-    if discrete_levels is not None:
-        base_env = mate.DiscreteCamera(base_env, levels=discrete_levels)
-
-    # target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
-    # target_agent_learned = env_config.get('opponent_agent_factory', target_agent_loaded)()
-    target_agent_candidates = []
-    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_arbitrary)())
-    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_random)())
-    env = mate.MultiCameraHytgt(base_env, target_agent_candidates=target_agent_candidates)
+    target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
+    env = mate.MultiCamera(base_env, target_agent=target_agent)
 
     env = mate.RelativeCoordinates(env)
     env = mate.RescaledObservation(env)
@@ -63,33 +41,34 @@ def make_env(env_config):
             reduction=env_config.get('reward_reduction', 'none'),
         )
 
-    frame_skip = env_config.get('frame_skip', 1)
-    if frame_skip > 1:
-        env = FrameSkip(env, frame_skip=frame_skip)
+    env = TgtIntentCamera(
+        env,
+        multi_selection=env_config.get('multi_selection', False),
+        frame_skip=env_config.get('frame_skip', 1),
+    )
 
     env = RLlibMultiAgentAPI(env)
     env = RLlibMultiAgentCentralizedTraining(env)
     return env
 
 
-tune.register_env('mate-mappo_hytgt.camera', make_env)
+tune.register_env('mate-its.mappo.camera', make_env)
 
 config = {
     'framework': 'torch',
     'seed': 0,
     # === Environment ==============================================================================
-    'env': 'mate-mappo_hytgt.camera',
+    'env': 'mate-its.mappo.camera',
     'env_config': {
         'env_id': 'MultiAgentTracking-v0',
-        'config': 'MATE-4v8-9-hytgt.yaml',
+        'config': 'MATE-4v8-9.yaml',
         'config_overrides': {'reward_type': 'dense'},
-        'reward_coefficients': {'intentional_coverage_rate': 1.0},  # override env's raw reward
+        'reward_coefficients': {'coverage_rate': 1.0},  # override env's raw reward
         'reward_reduction': 'mean',  # shared reward
-        'discrete_levels': 5,
+        'multi_selection': True,
         'frame_skip': 5,
         'enhanced_observation': 'none',
-        # 'opponent_agent_factory': target_agent_factory,
-        # 'opponent_agent_factory': target_agent_loaded,
+        'opponent_agent_factory': target_agent_factory,
     },
     'horizon': 500,
     'callbacks': CustomMetricCallback,

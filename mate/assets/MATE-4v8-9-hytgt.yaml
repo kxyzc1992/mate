@@ -1,5 +1,5 @@
 name: MultiAgentTracking(4v8, 9)
-max_episode_steps: 10000           # int in [0, +inf)
+max_episode_steps: 1000            # int in [0, +inf)
 num_cargoes_per_target: 8          # int in [4, +inf)
 high_capacity_target_split: 0.5    # float in [0.0, 1.0]
 targets_start_with_cargoes: true   # bool (true / false)

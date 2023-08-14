@@ -4,7 +4,7 @@ import threading
 from pathlib import Path
 
 import numpy as np
-from ray.rllib.agents.ppo import PPOTorchPolicy
+from ray.rllib.agents.ppo.ppo_torch_policy import PPOTorchPolicy
 from ray.rllib.agents.qmix.qmix import QMixTorchPolicy
 from ray.rllib.models.catalog import ModelCatalog
 from ray.rllib.models.preprocessors import NoPreprocessor
