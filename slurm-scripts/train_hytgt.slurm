@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name="mappo_hytgt_test"
-#SBATCH -o "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.out"
-#SBATCH -e "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.err"
 #SBATCH --partition=gpu
 #SBATCH --account=research
 #SBATCH --qos=level0
@@ -11,6 +9,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus=1
 #SBATCH --nodes=1
+#SBATCH -o "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.out"
+#SBATCH -e "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.err"
 
 module purge
 module load anaconda3/2021.11

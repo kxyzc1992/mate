@@ -34,7 +34,7 @@ class HierarchicalCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
     }
 
     def __init__(self, env, multi_selection=True, frame_skip=1, custom_metrics=None):
-        assert isinstance(env, mate.MultiCamera), (
+        assert isinstance(env, mate.MultiCamera) or isinstance(env, mate.MultiCameraHytgt), (
             f'You should use wrapper `{self.__class__}` with wrapper `MultiCamera`. '
             f'Please wrap the environment with wrapper `MultiCamera` first. '
             f'Got env = {env}.'

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name      MATE-camera.mappo
+#SBATCH --job-name      MATE-camera.hrl.mappo_hytgt
 #SBATCH --nodes         1
 #SBATCH --ntasks        1
 #SBATCH --cpus-per-task 60
@@ -49,7 +49,7 @@ fi
 
 # === Jobs =========================================================================================
 
-python3 -m examples.mappo_hytgt.camera.train \
-	--project mate-camera-hytgt \
+python3 -m examples.hrl.mappo_hytgt.camera.train \
+	--project mate-camera-hrl-hytgt \
 	--num-workers 16 --num-envs-per-worker 8 --num-gpus 0.3 \
 	--timesteps-total 10E6 --seed 0 1 2
