@@ -20,6 +20,7 @@ class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
         re.compile(r'^auxiliary_reward(\w*)$'): 'sum',
         re.compile(r'^reward_coefficient(\w*)$'): 'mean',
         'coverage_rate': 'mean',
+        'intentional_coverage_rate': 'mean',
         'real_coverage_rate': 'mean',
         'mean_transport_rate': 'last',
         'num_delivered_cargoes': 'last',

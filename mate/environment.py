@@ -29,6 +29,7 @@ from mate import constants as consts
 from mate.entities import Camera, Obstacle, Target
 from mate.utils import Message, Team, arctan2_deg, normalize_angle, polar2cartesian
 
+from mate.agents import ArbitraryTargetAgent
 
 __all__ = ['ASSETS_DIR', 'DEFAULT_CONFIG_FILE', 'read_config', 'EnvMeta', 'MultiAgentTracking']
 
@@ -640,6 +641,7 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
 
         common_info = {
             'coverage_rate': self.coverage_rate,
+            'intentional_coverage_rate': self.intentional_coverage_rate,
             'real_coverage_rate': self.real_coverage_rate,
             'mean_transport_rate': self.mean_transport_rate,
             'num_delivered_cargoes': self.num_delivered_cargoes,
@@ -838,11 +840,16 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
 
         self.episode_step = 0
         
-        # # Re-sample intentional targets assignment randomly
+        # Re-sample intentional targets assignment randomly
         # self.num_intentional = self.config['num_intentional_targets']
         # self.intentional_bits = np.zeros(self.num_targets, dtype=np.bool8)
         # intentional_indices = np.random.choice([i for i in range(self.num_targets)], size=self.num_intentional)        
         # self.intentional_bits[intentional_indices] = True
+        # for i in range(self.num_targets):
+        #     if isinstance(self.targets[i], ArbitraryTargetAgent):
+        #         self.intentional_bits[i] = True
+        #     else:
+        #         self.intentional_bits[i] = False
 
         return self.joint_observation()
 
