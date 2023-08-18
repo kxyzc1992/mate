@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="mappo_hytgt_test"
+#SBATCH --job-name="hrl-mappo_hytgt_test"
 #SBATCH --partition=gpu
 #SBATCH --account=research
 #SBATCH --qos=level0

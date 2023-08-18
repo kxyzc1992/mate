@@ -6,7 +6,7 @@ targets_start_with_cargoes: true
 bounty_factor: 1.0
 shuffle_entities: true
 reward_type: dense
-num_intentional_targets: 2 # 2 of 4 targets are intentional (to be tracked)
+num_intentional_targets: 4 #2 # 2 of 4 targets are intentional (to be tracked)
 
 camera:
   location:  # 2 cameras
