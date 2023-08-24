@@ -1,17 +1,95 @@
 import re
 
+from typing import Tuple
+
 import gym
 import numpy as np
 from gym import spaces
 
 import mate
+from mate import constants as consts
 from examples.utils import CustomMetricCallback, MetricCollector
+from mate.wrappers.typing import MateEnvironmentType, assert_mate_environment
 
 
 __all__ = [
-    'HierarchicalCamera',
+    'TgtIntentObservation',
+    'TgtIntentCamera',
 ]
 
+class TgtIntentObservation(gym.ObservationWrapper, metaclass=mate.WrapperMeta):
+    """Concat all the local observations as the state input of coordinator."""
+    
+    def __init__(self, env: MateEnvironmentType) -> None:
+        assert_mate_environment(env)
+        assert not isinstance(
+            env, TgtIntentObservation
+        ), f'You should not use wrapper `{self.__class__}` more than once. Got env = {env}.'
+
+        super().__init__(env)
+        
+        # pylint: disable-next=import-outside-toplevel
+        from mate.wrappers.single_team import SingleTeamHelper, SingleTeamSingleAgent
+        
+        self.single_team = isinstance(env, SingleTeamHelper)
+        
+        numbers = (env.num_cameras, env.num_targets, env.num_obstacles)
+        self.camera_slices = consts.camera_observation_slices_of(*numbers)
+        self.target_slices = consts.target_observation_slices_of(*numbers)
+        self.target_indices = consts.target_observation_indices_of(*numbers)
+        self.target_empty_bits_slice = slice(
+            self.target_indices[2] - consts.NUM_WAREHOUSES, self.target_indices[2]
+        )
+    
+    # pylint: disable-next=too-many-locals
+    def observation(
+        self, observation: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+
+        camera_joint_observation, target_joint_observation = observation
+
+        # Extract public states from camera/target observations
+        offset = consts.PRESERVED_DIM
+        camera_states_public = camera_joint_observation[
+            ..., offset : offset + consts.CAMERA_STATE_DIM_PUBLIC
+        ]
+        target_states_public = target_joint_observation[
+            ..., offset : offset + consts.TARGET_STATE_DIM_PUBLIC
+        ]
+        camera_states_public_flagged = np.hstack(
+            [camera_states_public, np.ones((self.num_cameras, 1))]
+        )
+        target_states_public_flagged = np.hstack(
+            [target_states_public, np.ones((self.num_targets, 1))]
+        )
+        obstacle_states_flagged = self.obstacle_states_flagged
+
+        # Give camera coordinator a combined view of all camera agents
+        target_mask = camera_joint_observation[..., self.camera_slices['opponent_mask']]
+        obstacle_mask = camera_joint_observation[..., self.camera_slices['obstacle_mask']]
+        shared_target_mask = target_mask.any(axis=0)[:, np.newaxis]
+        shared_obstacle_mask = obstacle_mask.any(axis=0)[:, np.newaxis]
+
+        camera_joint_observation[
+            ..., self.camera_slices['opponent_states_with_mask']
+        ] = np.where(shared_target_mask, target_states_public_flagged, 0.0).ravel()[
+            np.newaxis, ...
+        ]
+        camera_joint_observation[
+            ..., self.camera_slices['obstacle_states_with_mask']
+        ] = np.where(shared_obstacle_mask, obstacle_states_flagged, 0.0).ravel()[
+            np.newaxis, ...
+        ]
+        camera_joint_observation[
+            ..., self.camera_slices['teammate_states_with_mask']
+        ] = camera_states_public_flagged.ravel()[np.newaxis, ...]
+
+        return camera_joint_observation.astype(np.float64), target_joint_observation.astype(
+            np.float64
+        )
+    
+    def __str__(self) -> str:
+        return f'<{type(self).__name__}(team={self.team}){self.env}>'
 
 class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
     INFO_KEYS = {
@@ -32,7 +110,7 @@ class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
     }
     
     def __init__(self, env, multi_selection=True, frame_skip=1, custom_metrics=None):
-        assert isinstance(env, mate.MultiCamera), (
+        assert isinstance(env, (mate.MultiCamera, mate.MultiCameraHytgt)), (
             f'You should use wrapper `{self.__class__}` with wrapper `MultiCamera`. '
             f'Please wrap the environment with wrapper `MultiCamera` first. '
             f'Got env = {env}.'
@@ -51,6 +129,7 @@ class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
             self.camera_action_space = spaces.Discrete(env.num_targets + 1)
             self.action_mask_space = spaces.MultiBinary(env.num_targets + 1)
         self.action_space = spaces.Tuple(spaces=(self.camera_action_space,) * env.num_cameras)
+        # self.action_space = spaces.Tuple(spaces=(self.camera_action_space,) * (env.num_cameras + 1))
         self.teammate_action_space = self.camera_action_space
         self.teammate_joint_action_space = self.camera_joint_action_space = self.action_space
 
@@ -91,8 +170,10 @@ class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
     def step(self, action):
         action = np.asarray(action, dtype=np.int64)
         if self.multi_selection:
+            # action = action.reshape(self.num_cameras + 1, self.num_targets)
             action = action.reshape(self.num_cameras, self.num_targets)
         else:
+            # action = action.reshape(self.num_cameras + 1)
             action = action.reshape(self.num_cameras)
         assert self.camera_joint_action_space.contains(
             tuple(action)
@@ -115,8 +196,11 @@ class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
                 self.joint_executor(action, observations)
             )
 
+            # Designate the last cell as the mask of intentional targets
+            # intentional_targets_mask = action[self.num_cameras].astype(np.bool8)
             for c in range(self.num_cameras):
                 target_selection = action[c].astype(np.bool8)
+                # target_selection = np.logical_and(target_selection, intentional_targets_mask)
                 target_view_mask = observations[c, self.target_view_mask_slice].astype(np.bool8)
                 num_selected_targets = target_selection.sum()
                 num_valid_selected_targets = np.logical_and(

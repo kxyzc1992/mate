@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Run: python3 -m examples.its.mappo.camera.train
+# Run: python3 -m examples.its.mappo_hytgt.camera.train
 
 import argparse
 import copy
@@ -12,7 +12,7 @@ import ray
 import torch
 from ray import tune
 
-from examples.its.mappo.camera.config import config
+from examples.its.mappo_hytgt.camera.config import config
 from examples.utils import SymlinkCheckpointCallback, WandbLoggerCallback
 
 
@@ -68,7 +68,7 @@ def train(
     tune_callbacks = [SymlinkCheckpointCallback()]
     if WandbLoggerCallback.is_available():
         project = project or ('mate' if not DEBUG else 'mate-debug')
-        group = group or f'its.mappo.camera.{experiment.name}'
+        group = group or f'its.mappo_hytgt.camera.{experiment.name}'
         tune_callbacks.append(WandbLoggerCallback(project=project, group=group))
 
     if not ray.is_initialized():

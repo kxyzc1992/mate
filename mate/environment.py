@@ -565,6 +565,11 @@ class MultiAgentTracking(gym.Env, EzPickle, metaclass=EnvMeta):
             self.camera_communication_edges,
             self.target_communication_edges,
         )
+        
+        # if self.config['coordinator']['is_valid']:
+        #     if self.config['coordinator']['predict_intentional_mask']:
+        #         self.coordinator_observation_space = self.camera_joint_observation_space
+        #         self.coordinator_action_space = 
 
         self._np_random = None
         self.seed(seed=0)

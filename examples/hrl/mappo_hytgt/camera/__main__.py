@@ -65,7 +65,10 @@ def main():
 
     # Make agents ##############################################################
     camera_agent = HRLMAPPOCameraAgent(checkpoint_path=args.checkpoint_path)
-    target_agent = mate.GreedyTargetAgent()
+    # target_agent = mate.GreedyTargetAgent()
+    target_agent_candidates = []
+    target_agent_candidates.append(mate.ArbitraryTargetAgent())
+    target_agent_candidates.append(mate.RandomTargetAgent())
 
     # Make the environment #####################################################
     env_config = camera_agent.config.get('env_config', {})
@@ -79,7 +82,8 @@ def main():
     base_env = mate.RenderCommunication(base_env)
     if enhanced_observation_team is not None:
         base_env = mate.EnhancedObservation(base_env, team=enhanced_observation_team)
-    env = mate.MultiCamera(base_env, target_agent=target_agent)
+    # env = mate.MultiCamera(base_env, target_agent=target_agent)
+    env = mate.MultiCameraHytgt(base_env, target_agent_candidates=target_agent_candidates)
     print(env)
 
     # Rollout ##################################################################

@@ -4,8 +4,8 @@ import numpy as np
 from ray.rllib.agents.ppo import PPOTorchPolicy
 
 import mate
-from examples.its.mappo.camera.config import config as _config
-from examples.its.mappo.camera.config import make_env as _make_env
+from examples.its.mappo_hytgt.camera.config import config as _config
+from examples.its.mappo_hytgt.camera.config import make_env as _make_env
 from examples.its.wrappers import TgtIntentCamera
 from examples.utils import RLlibPolicyMixIn
 
@@ -68,4 +68,5 @@ class ITSMAPPOCameraAgent(RLlibPolicyMixIn, mate.CameraAgentBase):
             target_view_mask=tracked_bits,
         )
 
-        return self.last_action
+        return None
+        # return self.last_action

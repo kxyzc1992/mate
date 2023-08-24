@@ -3,8 +3,9 @@ from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.policy import PolicySpec
 
 import mate
-from examples.its.wrappers import TgtIntentCamera
-from examples.mappo.models import MAPPOModel
+from examples.its.wrappers import TgtIntentObservation, TgtIntentCamera
+# from examples.mappo.models import MAPPOModel
+from examples.its.mappo_hytgt.models import ITSMAPPOModel
 from examples.utils import (
     SHARED_POLICY_ID,
     CustomMetricCallback,
@@ -14,8 +15,15 @@ from examples.utils import (
 )
 
 
-def target_agent_factory():
+# def target_agent_factory():
+def target_agent_greedy():
     return mate.agents.GreedyTargetAgent(seed=0)
+
+def target_agent_arbitrary():
+    return mate.agents.ArbitraryTargetAgent(seed=0)
+
+def target_agent_random():
+    return mate.agents.RandomTargetAgent(seed=0)
 
 
 def make_env(env_config):
@@ -24,11 +32,17 @@ def make_env(env_config):
     base_env = mate.make(
         env_id, config=env_config.get('config'), **env_config.get('config_overrides', {})
     )
-    if str(env_config.get('enhanced_observation', None)).lower() != 'none':
-        base_env = mate.EnhancedObservation(base_env, team=env_config['enhanced_observation'])
+    # if str(env_config.get('enhanced_observation', None)).lower() != 'none':
+    #     base_env = mate.EnhancedObservation(base_env, team=env_config['enhanced_observation'])
+    base_env = TgtIntentObservation(base_env)
 
-    target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
-    env = mate.MultiCamera(base_env, target_agent=target_agent)
+    # target_agent = env_config.get('opponent_agent_factory', target_agent_factory)()
+    # env = mate.MultiCamera(base_env, target_agent=target_agent)
+
+    target_agent_candidates = []
+    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_arbitrary)())
+    target_agent_candidates.append(env_config.get('opponent_agent_factory', target_agent_random)())
+    env = mate.MultiCameraHytgt(base_env, target_agent_candidates=target_agent_candidates)
 
     env = mate.RelativeCoordinates(env)
     env = mate.RescaledObservation(env)
@@ -52,23 +66,25 @@ def make_env(env_config):
     return env
 
 
-tune.register_env('mate-its.mappo.camera', make_env)
+tune.register_env('mate-its.mappo_hytgt.camera', make_env)
 
 config = {
     'framework': 'torch',
     'seed': 0,
     # === Environment ==============================================================================
-    'env': 'mate-its.mappo.camera',
+    'env': 'mate-its.mappo_hytgt.camera',
     'env_config': {
         'env_id': 'MultiAgentTracking-v0',
-        'config': 'MATE-4v8-9.yaml',
+        # 'config': 'MATE-4v8-9.yaml',
+        'config': 'MATE-4hv8-9-hytgt.yaml',
         'config_overrides': {'reward_type': 'dense'},
-        'reward_coefficients': {'coverage_rate': 1.0},  # override env's raw reward
+        # 'reward_coefficients': {'coverage_rate': 1.0},  # override env's raw reward
+        'reward_coefficients': {'intentional_coverage_rate': 1.0},  # override env's raw reward
         'reward_reduction': 'mean',  # shared reward
         'multi_selection': True,
         'frame_skip': 5,
-        'enhanced_observation': 'none',
-        'opponent_agent_factory': target_agent_factory,
+        # 'enhanced_observation': 'camera', # 'none',
+        # 'opponent_agent_factory': target_agent_factory,
     },
     'horizon': 500,
     'callbacks': CustomMetricCallback,
@@ -76,11 +92,13 @@ config = {
     'normalize_actions': True,
     'model': {
         'max_seq_len': 25,
-        'custom_model': MAPPOModel,
+        'custom_model': ITSMAPPOModel,
         'custom_model_config': {
             **MODEL_DEFAULTS,
             'actor_hiddens': [512, 256],
             'actor_hidden_activation': 'tanh',
+            'coordinator_hiddens': [512, 256],
+            'coordinator_hidden_activation': 'tanh',
             'critic_hiddens': [512, 256],
             'critic_hidden_activation': 'tanh',
             'lstm_cell_size': 256,
