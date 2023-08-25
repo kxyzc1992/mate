@@ -88,8 +88,8 @@ class TgtIntentObservation(gym.ObservationWrapper, metaclass=mate.WrapperMeta):
             np.float64
         )
     
-    def __str__(self) -> str:
-        return f'<{type(self).__name__}(team={self.team}){self.env}>'
+    # def __str__(self) -> str:
+    #     return f'<{type(self).__name__}(team={'camera'}){self.env}>'
 
 class TgtIntentCamera(gym.Wrapper, metaclass=mate.WrapperMeta):
     INFO_KEYS = {

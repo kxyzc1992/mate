@@ -102,10 +102,10 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
         
         self.coordinator = SimpleRNN(
             name='coordinator',
-            input_dim=self.global_state_dim, ##
+            input_dim=self.local_obs_dim,
             hidden_dims=self.coordinator_hiddens,
             cell_size=self.lstm_cell_size,
-            output_dim=num_outputs, # same size as target selection
+            output_dim=num_outputs,
             activation=self.coordinator_hidden_activation,
             output_activation=None,
             hidden_weight_initializer=orthogonal_initializer(scale=1.0),
@@ -125,7 +125,7 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
         )
 
     def get_initial_state(self):
-        return [*self.actor.get_initial_state(), *self.critic.get_initial_state()]
+        return [*self.actor.get_initial_state(), *self.coordinator.get_initial_state(), *self.critic.get_initial_state()]
 
     def forward_rnn(self, inputs, state, seq_lens):
         assert inputs.size(-1) == self.flat_obs_dim
@@ -134,9 +134,10 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
         actor_state_in = state[:2]
         action_out, actor_state_out = self.actor(local_obs, actor_state_in)
         
-        combined_local_obs = inputs[..., self.local_obs_slice]
-        coordinator_state_in = state[2]
-        intentional_mask, coordinator_state_out = self.coordinator(combined_local_obs, coordinator_state_in)
+        # combined_local_obs = inputs[..., self.local_obs_slice]
+        coordinator_state_in = state[2:4]
+        # intentional_mask, coordinator_state_out = self.coordinator(combined_local_obs, coordinator_state_in)
+        intentional_mask, coordinator_state_out = self.coordinator(local_obs, coordinator_state_in)
         action_out *= intentional_mask
 
         if self.has_action_mask:
@@ -146,7 +147,7 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
         # action_out *= intentional_mask
 
         global_state = inputs[..., self.global_state_slice]
-        critic_state_in = state[3:]
+        critic_state_in = state[4:]
         _, critic_state_out = self.critic(global_state, critic_state_in, features_only=True)
 
         return action_out, [*actor_state_out, *coordinator_state_out, *critic_state_out]

@@ -5,7 +5,7 @@ from ray.rllib.policy.policy import PolicySpec
 import mate
 from examples.its.wrappers import TgtIntentObservation, TgtIntentCamera
 # from examples.mappo.models import MAPPOModel
-from examples.its.mappo_hytgt.models import ITSMAPPOModel
+from examples.its.models import ITSMAPPOModel
 from examples.utils import (
     SHARED_POLICY_ID,
     CustomMetricCallback,
