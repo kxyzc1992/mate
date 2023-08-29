@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name="hrl-mappo_hytgt_test"
+#SBATCH --job-name="mappo_hrl_hytgt_test"
 #SBATCH --partition=gpu
 #SBATCH --account=research
 #SBATCH --qos=level0
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=60
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus=1
 #SBATCH --nodes=1
-#SBATCH -o "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.out"
-#SBATCH -e "/scratch/kongxiangyu/Experiments/mate/hytgt_test.%j.%N.err"
+#SBATCH -o "/scratch/kongxiangyu/Experiments/mate/hrl_hytgt_test.%j.%N.out"
+#SBATCH -e "/scratch/kongxiangyu/Experiments/mate/hrl_hytgt_test.%j.%N.err"
 
 module purge
 module load anaconda3/2021.11

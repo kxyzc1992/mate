@@ -82,7 +82,7 @@ config = {
         'reward_reduction': 'mean',  # shared reward
         'multi_selection': True,
         'frame_skip': 5,
-        'enhanced_observation': 'none',
+        'enhanced_observation': 'camera',
         # 'opponent_agent_factory': target_agent_factory,
     },
     'horizon': 500,
