@@ -107,7 +107,7 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
             cell_size=self.lstm_cell_size,
             output_dim=num_outputs,
             activation=self.coordinator_hidden_activation,
-            output_activation=None,
+            output_activation='sigmoid',
             hidden_weight_initializer=orthogonal_initializer(scale=1.0),
             output_weight_initializer=orthogonal_initializer(scale=0.01),
         )
@@ -138,13 +138,12 @@ class ITSMAPPOModel(TorchRNN, nn.Module):
         coordinator_state_in = state[2:4]
         # intentional_mask, coordinator_state_out = self.coordinator(combined_local_obs, coordinator_state_in)
         intentional_mask, coordinator_state_out = self.coordinator(local_obs, coordinator_state_in)
-        action_out *= intentional_mask
 
         if self.has_action_mask:
             action_mask = inputs[..., self.action_mask_slice].clamp(min=0.0, max=1.0)
             inf_mask = torch.log(action_mask).clamp_min(min=torch.finfo(action_out.dtype).min)
             action_out = action_out + inf_mask
-        # action_out *= intentional_mask
+        action_out *= intentional_mask
 
         global_state = inputs[..., self.global_state_slice]
         critic_state_in = state[4:]
